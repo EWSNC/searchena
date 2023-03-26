@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>上传和搜索</title>
+</head>
+<link href="asset/layui-v2.7.6/css/layui.css" rel="stylesheet">
+<body>
+<h1 style="text-align: center">upload file and search from ENA</h1>
+<br/><br/><br/>
+<div class="layui-container" style="height:1000px;border: 1px solid black">
+    <div class="layui-btn-group">
+        <button type="button" id="uploadBtn" class="layui-btn"><i class="layui-icon">&#xe67c;</i>上传文件</button>
+        <button type="button" id="sendBtn" onclick="doSearch()" class="layui-btn"><i
+                class="layui-icon layui-icon-ok"></i>生成
+        </button>
+    </div>
+    <table lay-even lay-skin="line" lay-size="lg" id="fileTable">
+    </table>
+</div>
+</body>
+<script src="asset/layui-v2.7.6/layui.js"></script>
+<script src="asset/jquery/jquery-3.6.4.js"></script>
+<script>
+    layui.use('upload', function () {
+        var upload = layui.upload;
+        upload.render({
+            elem: '#uploadBtn' //绑定元素
+            , url: '/fileChannel/uploadFile' //上传接口
+            , accept: "file"
+            , exts: 'txt' //只筛txt
+            , done: function (res) {
+                debugger;
+                layer.msg("上传成功")
+                table.reload("fileTable", {
+                    url: '/fileChannel/getFileList'
+                });
+            }
+            , error: function (error) {
+                layer.msg("上传失败")
+            }
+        });
+    });
+
+    var table = layui.table;
+    //执行渲染
+    table.render({
+        elem: '#fileTable'
+        , height: 900
+        , url: '/fileChannel/getFileList' //数据接口
+        , page: false //开启分页
+        , cols: [[ //表头
+            {field: 'id', type: 'checkbox', title: '选择', width: 50}
+            , {field: 'fileName', title: '文件名', width: 300}
+            , {field: 'filePath', title: '文件路径', width: 500}
+            , {field: 'uploadTime', title: '文件修改时间', width: 200}
+        ]]
+    });
+
+    function doSearch() {
+        var checkStatus = table.checkStatus('fileTable')
+        if (checkStatus.data.length === 0) {
+            layer.msg("至少选择一条数据");
+            return;
+        }
+        debugger;
+        var params = JSON.stringify(checkStatus.data);
+
+        var doing = true;
+        $.post({
+            url: "/searchena/beforeSearchEna",
+            dataType: "json",
+            data: {"params": params},
+            async: false,
+            success: function (res) {
+                debugger
+                if (res.status !== 0) {
+                    layer.msg(res.msg);
+                } else {
+                    doing = false;
+                }
+            }
+        });
+
+        if (!doing) {
+            var index = top.layer.load();
+            $.post({
+                url: "/searchena/doSearchEna",
+                dataType: "json",
+                data: {"params": params},
+                async: true,
+                success: function (res) {
+                    debugger
+                    layer.msg(res.msg);
+                    top.layer.close(index);
+                },
+                error: function (error) {
+                    layer.msg(error);
+                    top.layer.close(index);
+                },
+            });
+        }
+    }
+</script>
+</html>
